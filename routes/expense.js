@@ -2,9 +2,28 @@ const express = require ('express');    // Import express
 const route = express.Router ();       // Create an express router
 const Expense = require ('../models/expense');            // Import the expense model
 const mongoose = require('mongoose');    // Import mongoose
+const jwt = require ('jsonwebtoken');   // Import jsonwebtoken
+require('dotenv').config();
+const SECRET_KEY = process.env.JWT_SECRET;
+
+// Middleware to verify JWT token
+const verifyToken = (req, res, next) => {
+    const token = req.headers['authorization']?.split(' ')[1]; // Extract the token from the Authorization header
+    
+    if (!token) {
+        return res.status(401).send({message: 'No token provided'}); // Return an error if no token is provided
+    }
+    jwt.verify(token, SECRET_KEY, (err, decoded) => { // Verify the token using the secret key
+        if (err) {
+            return res.status(401).send({message: 'Failed to authenticate token'}); // Return an error if the token is invalid
+        }
+        req.userId = decoded.id; // Set the user ID from the token in the request object
+        next(); // Call the next middleware or route handler
+    });
+};
 
 // Create a new expense
-route.post ('/add-expense', async (req, res) => {
+route.post ('/add-expense', verifyToken, async (req, res) => {
     const { total, datespent, items, additionaldetails } = req.body; // Destructure the request body
 
     // Check if the required fields are present
@@ -43,6 +62,7 @@ route.post ('/add-expense', async (req, res) => {
 
     // Create a new expense document using the Expense model
     const expense = new Expense();
+    expense.userId = req.userId; // Set the user ID from the token
     expense.total = total;
     expense.datespent = datespent;
     expense.items = items;
@@ -50,11 +70,11 @@ route.post ('/add-expense', async (req, res) => {
 
     await expense.save();
 
-    res.status(201).send({message: 'Expense added successfully'});
+    res.status(201).send({message: 'Expense added successfully', expense}); // Return a success message and the created expense
 });
 
 // Get all expenses, optionally filtered by month and year
-route.get ('/get-expenses', async (req, res) => {
+route.get ('/get-expenses', verifyToken, async (req, res) => {
     const { month, year } = req.query; // Destructure the query parameters
 try{
     let expenses = [];
@@ -78,7 +98,7 @@ try{
 
 
 // Get a single expense by ID
-route.get ('/get-expense/:id', async (req, res) => {
+route.get ('/get-expense/:id', verifyToken, async (req, res) => {
     const { id } = req.params; // Destructure the request parameters
 
    try{ 

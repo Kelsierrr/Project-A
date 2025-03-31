@@ -2,9 +2,11 @@ const express = require ('express');    // Import express
 const route = express.Router ();       // Create an express router
 require('dotenv').config();              // Import dotenv
 const jwt = require ('jsonwebtoken');   // Import jsonwebtoken
-const bcrypt = require ('bcryptjs');    // Import bcryptjs
-const mongoose = require('mongoose');    // Import mongoose
+const bcrypt = require ('bcrypt');    // Import bcryptjs
 const User = require ('../models/user');            // Import the user model
+const mongoose = require('mongoose');    // Import mongoose
+
+
 
 
 
