@@ -5,6 +5,9 @@ const jwt = require ('jsonwebtoken');   // Import jsonwebtoken
 const bcrypt = require ('bcrypt');    // Import bcryptjs
 const User = require ('../models/user');            // Import the user model
 const mongoose = require('mongoose');    // Import mongoose
+const crypto = require('crypto'); // Import crypto for secure random token generation
+const transporter = require('../utils/nodemailer'); // Import nodemailer transporter
+
 
 
 
@@ -99,6 +102,95 @@ route.post ('/login', async (req, res) => {
     } catch (error) {
         console.error(error);
         return res.status(500).send({message: 'An error occurred'});
+    }
+});
+
+
+//handling reset password requests
+route.post('/reset-password', async (req, res) => {
+    const { email } = req.body; // Destructure the request body
+
+    // Check if the required fields are present
+    if (!email) {
+        return res.status(400).send({ message: 'Email is required' });
+    }
+
+    // Validate email format
+    if (!emailRegex.test(email)) {
+        return res.status(400).send({ message: 'Invalid email format' });
+    }
+
+    try {
+        // Check if the user exists
+        const user = await User.findOne({ email }).lean();
+        if (!user) {
+            return res.status(404).send({ message: 'User not found' });
+        }
+
+        // Generate a secure random token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+
+        // Save the reset token to the user document (you should also set an expiration time)
+        user.resetToken = resetToken;
+        user.resetTokenExpiration = Date.now() + 15 * 60 * 1000; // Token valid for 15 minutes
+        await user.save();
+
+        // Send the reset link via email
+        const resetLink = `${process.env.RESET_PASSWORD_URL}/reset-password/${resetToken}`;
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Password Reset Request',
+            html:
+                `<p>Hi ${user.username},</p>
+                 <p>You requested a password reset. Click the link below to reset your password:</p>
+                 <a href="${resetLink}">Reset Password</a>
+                 <p>If you did not request this, please ignore this email.</p>
+                 <p>Thank you!</p>`
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        return res.status(200).send({ message: 'Password reset link sent to your email' });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).send({ message: 'An error occurred' });
+    }
+});
+
+
+// Reset password using the token
+route.post('/reset-password/:token', async (req, res) => {
+    const { token } = req.params; // Get the token from the URL
+    const { newPassword } = req.body; // Get the new password from the request body
+
+    // Check if the required fields are present
+    if (!newPassword) {
+        return res.status(400).send({ message: 'New password is required' });
+    }
+
+    // Validate password format
+    if (!passwordregex.test(newPassword)) {
+        return res.status(400).send({ message: 'Password must be between 6 and 20 characters and contain at least one numeric digit, one uppercase and one lowercase letter' });
+    }
+
+    try {
+        // Find the user with the reset token
+        const user = await User.findOne({ resetToken: token, resetTokenExpiration: { $gt: Date.now() } }).lean();
+        if (!user) {
+            return res.status(404).send({ message: 'Invalid or expired reset token' });
+        }
+
+        // Update the user's password
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.resetToken = undefined; // Clear the reset token
+        user.resetTokenExpiration = undefined; // Clear the expiration time
+        await user.save();
+
+        return res.status(200).send({ message: 'Password has been reset successfully' });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).send({ message: 'An error occurred' });
     }
 });
 

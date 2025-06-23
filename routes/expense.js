@@ -17,8 +17,8 @@ const verifyToken = (req, res, next) => {
         if (err) {
             return res.status(401).send({message: 'Failed to authenticate token'}); // Return an error if the token is invalid
         }
-        req.userId = decoded.id; // Set the user ID from the token in the request object
-        next(); // Call the next middleware or route handler
+        req.userId = decoded.id;                 // Set the user ID from the token in the request object
+        next();                             // Call the next middleware or route handler
     });
 };
 
@@ -118,5 +118,27 @@ res.status(200).send(expense);
     console.error(error);
     return res.status(500).send({message: 'An error occurred'});
 }});
+
+// get all expenses by user ID
+route.get ('/user-expenses/:userId', verifyToken, async (req, res) => {
+    const { userId } = req.params; // Destructure the request parameters
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).send({message: 'Invalid user ID'});
+    }
+
+    try {
+        const expenses = await Expense.find({ userId }).sort({datespent: -1 }).lean();
+
+        if (expenses.length === 0) {
+            return res.status(404).send({message: 'No expenses found for this user'});
+        }
+
+        res.status(200).send(expenses);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).send({message: 'An error occurred'});
+    }
+});
 
 module.exports = route; 

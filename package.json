@@ -17,13 +17,14 @@
     "url": "https://github.com/Kelsierrr/Project-A/issues"
   },
   "homepage": "https://github.com/Kelsierrr/Project-A#readme",
-  "description": "",
   "dependencies": {
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.1",
+    "nodemailer": "^7.0.3",
     "nodemon": "^3.1.9"
-  }
+  },
+  "description": ""
 }
