@@ -26,6 +26,8 @@ con.on('disconnected', error => {
 app.use (express.json ());                       // Enable req.body JSON parsing
 // app.use (bodyparser.json ());                       // Enable req.body JSON parsing
 
+app.get('/health', (req, res) => res.json({ ok: true }));
+
 
 app.use("/expenses", require ("./routes/expense"));
 app.use("/", require ("./routes/profile"))
